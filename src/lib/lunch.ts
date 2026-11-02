@@ -91,7 +91,8 @@ export function buildLunch(
     for (const l of draft.orders[userId] ?? []) {
       if (l.quantity <= 0) continue;
       orders.push({
-        id: uid('ord'),
+        // Deterministic & sortable, so dish order survives a round-trip through the database.
+        id: `ord-${id}-${String(orders.length).padStart(3, '0')}`,
         lunchRecordId: id,
         userId,
         menuItemId: l.menuItemId,

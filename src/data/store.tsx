@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppData, MenuItem, Paise, User } from '../types';
-import { LocalStorageRepository, saveDraftRaw, type DataRepository } from './repository';
+import { saveDraftRaw, type DataRepository } from './repository';
+import { createRepository } from './config';
 import { createDemoData, migrateMenu } from './seed';
 import { buildLunch, sortAttendees, type LunchDraft } from '../lib/lunch';
 import { nowISO, uid } from '../lib/util';
@@ -36,30 +37,39 @@ const StoreContext = createContext<StoreApi | null>(null);
 const normalize = (s: string) => s.trim().replace(/\s+/g, ' ');
 
 export function StoreProvider({ children, repository }: { children: ReactNode; repository?: DataRepository }) {
-  const repo = useMemo(() => repository ?? new LocalStorageRepository(), [repository]);
+  const repo = useMemo(() => repository ?? createRepository(), [repository]);
   const [data, setData] = useState<AppData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const dataRef = useRef<AppData | null>(null);
   const toast = useToast();
 
   useEffect(() => {
     let cancelled = false;
-    repo.load().then((loaded) => {
-      if (cancelled) return;
-      const migrated = loaded ? migrateMenu(loaded) : null;
-      const initial = migrated ?? loaded ?? createDemoData();
-      if (!loaded || migrated) repo.save(initial).catch(() => undefined);
-      dataRef.current = initial;
-      setData(initial);
-    });
-    const unsub = repo.subscribe?.((d) => {
-      dataRef.current = d;
-      setData(d);
-    });
+    let unsub: (() => void) | undefined;
+    setLoadError(null);
+    repo
+      .load()
+      .then((loaded) => {
+        if (cancelled) return;
+        const migrated = loaded ? migrateMenu(loaded) : null;
+        const initial = migrated ?? loaded ?? createDemoData();
+        if (!loaded || migrated) repo.save(initial).catch((e: Error) => toast.error(e.message));
+        dataRef.current = initial;
+        setData(initial);
+        // Start live updates only after the first load, so they never race it.
+        unsub = repo.subscribe?.((d) => {
+          const m = migrateMenu(d) ?? d;
+          dataRef.current = m;
+          setData(m);
+        });
+      })
+      .catch((e: Error) => !cancelled && setLoadError(e.message || 'Could not load data.'));
     return () => {
       cancelled = true;
       unsub?.();
     };
-  }, [repo]);
+  }, [repo, attempt, toast]);
 
   const commit = useCallback(
     (fn: (d: AppData) => AppData) => {
@@ -224,6 +234,18 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
     };
   }, [data, commit]);
 
+  if (!api && loadError) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-cream-100 px-6 text-center">
+        <div className="font-display text-2xl text-maroon-700">Sambar Settlement</div>
+        <p className="max-w-xs text-sm text-ink-500">Couldn’t reach the shared lunch data. Check your internet connection and try again.</p>
+        <p className="max-w-xs text-xs text-ink-400">{loadError}</p>
+        <button className="btn btn-primary" onClick={() => setAttempt((a) => a + 1)}>
+          Try again
+        </button>
+      </div>
+    );
+  }
   if (!api) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-cream-100 text-ink-500">

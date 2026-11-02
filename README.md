@@ -17,7 +17,15 @@ A mobile-first web app for our lunch group at **Chettiar Karaikudi Mess**. Recor
 - **Demo data**: 3 sample lunches, labelled *Demo*. Use **Remove demo lunches** or **Reset demo data** on the dashboard.
 - **Phone-friendly** on iOS Safari and Android Chrome: safe-area insets, bottom tab bar, bottom-sheet dialogs, 16px inputs (no zoom on focus), numeric keypads for amounts, 44px+ touch targets, and Add to Home Screen support.
 
-> **Data storage:** v1 stores data in the browser's LocalStorage, so each phone or browser has its own copy. All storage goes through `DataRepository` (`src/data/repository.ts`), so a Supabase backend can be added without touching the UI.
+> **Shared data (Supabase):** all lunches, people and dishes live in one Supabase table (`app_records`), so everyone in the group sees the same data and changes appear live on every phone. A copy is cached in the browser so the app still opens offline. In-progress lunch drafts stay on the phone that is recording them.
+>
+> Anyone with the site link can view and edit (there is no login yet). The publishable key in `src/data/config.ts` is public by design; access is controlled by the policies in `supabase-schema.sql`. Never put the database password in the code.
+
+### Supabase setup (already done for this project)
+
+1. In the Supabase SQL editor, run `supabase-schema.sql` (it creates the table, the access policies and live updates).
+2. Set the project URL and publishable key in `src/data/config.ts`, or as `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY`.
+3. To run without the cloud (data kept only in this browser), build with `VITE_STORAGE=local`.
 
 ## Tech
 
@@ -50,6 +58,8 @@ src/
   lib/split.ts           exact allocation + split computation
   lib/lunch.ts           draft → records, settlements, balances
   data/repository.ts     persistence interface + LocalStorage implementation
+  data/supabaseRepository.ts  shared cloud storage (diffed row upserts, live updates)
+  data/config.ts         which storage to use (Supabase URL + publishable key)
   data/store.tsx         app state & actions
   data/seed.ts           demo people, placeholder menu, sample lunches
   components/            layout, modal/bottom sheet, toasts, dish illustrations, UI bits

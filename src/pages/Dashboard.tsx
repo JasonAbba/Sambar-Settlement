@@ -23,6 +23,7 @@ import { AvatarStack, Badge, EmptyState, StatCard } from '../components/ui';
 import { useConfirm, useToast } from '../components/feedback';
 import { loadDraftRaw } from '../data/repository';
 import { Insights } from '../components/Insights';
+import { isCloud } from '../data/config';
 
 export default function Dashboard() {
   const store = useStore();
@@ -149,6 +150,11 @@ export default function Dashboard() {
         <div className="flex items-start gap-3">
           <Info className="mt-0.5 h-5 w-5 shrink-0 text-terracotta-500" />
           <div className="text-sm text-ink-700">
+            {isCloud && (
+              <p className="mb-1.5 flex items-center gap-1.5 font-semibold text-leaf-700">
+                <span className="h-2 w-2 rounded-full bg-leaf-500" /> Shared with the whole group — changes sync live.
+              </p>
+            )}
             {demoCount > 0 ? (
               <>
                 <strong>
