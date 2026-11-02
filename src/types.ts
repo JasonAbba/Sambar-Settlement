@@ -98,6 +98,8 @@ export interface Settlement {
 
 export interface AppData {
   version: 1;
+  /** Which built-in menu additions this dataset has received. */
+  menuSeedVersion?: number;
   users: User[];
   menuItems: MenuItem[];
   lunches: LunchRecord[];

@@ -34,7 +34,41 @@ const MENU: [name: string, category: string, rupees: number, art: string][] = [
   ['Parotta', 'Breads', 30, 'parotta'],
   ['Curd Rice', 'Rice', 80, 'curdrice'],
   ['Lime Soda', 'Drinks', 40, 'drink'],
+  // Added in menu v2 (prices are placeholders too)
+  ['Veg Meals', 'Meals', 120, 'meals'],
+  ['Paneer Biryani', 'Biryani', 200, 'biryani'],
+  ['Ghee Rice', 'Rice', 120, 'curdrice'],
+  ['Khuska Rice', 'Rice', 130, 'biryani'],
+  ['White Rice', 'Rice', 50, 'curdrice'],
+  ['Grill Chicken', 'Chicken', 250, 'pepperchicken'],
+  ['Chicken Chettinad', 'Chicken', 200, 'mutton'],
+  ['Boneless Chicken Tawa Fry', 'Chicken', 220, 'pepperchicken'],
+  ['Chicken Kebab', 'Starters', 160, 'chicken65'],
+  ['Mutton Chops', 'Mutton', 280, 'mutton'],
+  ['Mutton Nalli', 'Mutton', 300, 'mutton'],
+  ['Boiled Egg', 'Egg', 20, 'omelette'],
+  ['Chapati', 'Breads', 25, 'parotta'],
+  ['Diet Coke', 'Drinks', 40, 'drink'],
+  ['Coke Zero', 'Drinks', 40, 'drink'],
+  ['Sprite Zero', 'Drinks', 40, 'drink'],
+  ['Goli Soda', 'Drinks', 25, 'drink'],
 ];
+
+/** Bump when seed menu items are added, so existing browsers receive them once. */
+export const MENU_SEED_VERSION = 2;
+
+/**
+ * Adds seed menu items that an existing dataset doesn't have yet (matched by
+ * id or name). Runs once per MENU_SEED_VERSION, so dishes a user deliberately
+ * deleted afterwards are not resurrected.
+ */
+export function migrateMenu(data: AppData): AppData | null {
+  if ((data.menuSeedVersion ?? 1) >= MENU_SEED_VERSION) return null;
+  const haveIds = new Set(data.menuItems.map((m) => m.id));
+  const haveNames = new Set(data.menuItems.map((m) => m.name.toLowerCase()));
+  const missing = seedMenu().filter((m) => !haveIds.has(m.id) && !haveNames.has(m.name.toLowerCase()));
+  return { ...data, menuItems: [...data.menuItems, ...missing], menuSeedVersion: MENU_SEED_VERSION };
+}
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -134,7 +168,7 @@ export function createDemoData(): AppData {
     },
   ];
 
-  const data: AppData = { version: 1, users, menuItems, lunches: [], orders: [], settlements: [] };
+  const data: AppData = { version: 1, menuSeedVersion: MENU_SEED_VERSION, users, menuItems, lunches: [], orders: [], settlements: [] };
   for (const { id, draft, billDelta, paidBy } of drafts) {
     const preview = buildLunch(draft, null, undefined, { id, isDemo: true });
     const bill = preview.record.totalAmount + billDelta * 100;

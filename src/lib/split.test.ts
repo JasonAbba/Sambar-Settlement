@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { allocate, computeSplit } from './split';
 import { formatINR, parseRupees, paiseToInput } from './money';
 import { buildLunch, emptyDraft, pairBalances, personBalances, type LunchDraft } from './lunch';
-import { createDemoData } from '../data/seed';
+import { createDemoData, migrateMenu } from '../data/seed';
 import type { AdditionalCharge, AppData } from '../types';
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
@@ -125,9 +125,16 @@ describe('demo data & balances', () => {
   const data: AppData = createDemoData();
   it('has 11 people, 13 menu items, 3 demo lunches', () => {
     expect(data.users).toHaveLength(11);
-    expect(data.menuItems).toHaveLength(13);
+    expect(data.menuItems).toHaveLength(30);
     expect(data.lunches).toHaveLength(3);
     expect(data.lunches.every((l) => l.isDemo)).toBe(true);
+  });
+  it('adds new menu items to existing v1 data once, without duplicates', () => {
+    const old: AppData = { ...data, menuSeedVersion: undefined, menuItems: data.menuItems.slice(0, 13) };
+    const migrated = migrateMenu(old)!;
+    expect(migrated.menuItems).toHaveLength(30);
+    expect(new Set(migrated.menuItems.map((m) => m.name)).size).toBe(30);
+    expect(migrateMenu(migrated)).toBeNull();
   });
   it('every lunch: shares sum to total', () => {
     for (const l of data.lunches) {

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppData, MenuItem, Paise, User } from '../types';
 import { LocalStorageRepository, saveDraftRaw, type DataRepository } from './repository';
-import { createDemoData } from './seed';
+import { createDemoData, migrateMenu } from './seed';
 import { buildLunch, sortAttendees, type LunchDraft } from '../lib/lunch';
 import { nowISO, uid } from '../lib/util';
 import { useToast } from '../components/feedback';
@@ -45,8 +45,9 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
     let cancelled = false;
     repo.load().then((loaded) => {
       if (cancelled) return;
-      const initial = loaded ?? createDemoData();
-      if (!loaded) repo.save(initial).catch(() => undefined);
+      const migrated = loaded ? migrateMenu(loaded) : null;
+      const initial = migrated ?? loaded ?? createDemoData();
+      if (!loaded || migrated) repo.save(initial).catch(() => undefined);
       dataRef.current = initial;
       setData(initial);
     });
