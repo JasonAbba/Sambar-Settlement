@@ -1,0 +1,19 @@
+{
+  "name": "Chettiar Splitter",
+  "short_name": "Splitter",
+  "description": "Good food. Good company. Fair splits.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF4E4",
+  "theme_color": "#731D28",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
