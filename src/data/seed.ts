@@ -43,7 +43,8 @@ const MENU: [name: string, category: string, rupees: number, art: string][] = [
   ['Grill Chicken', 'Chicken', 250, 'pepperchicken'],
   ['Chicken Chettinad', 'Chicken', 200, 'mutton'],
   ['Boneless Chicken Tawa Fry', 'Chicken', 220, 'pepperchicken'],
-  ['Chicken Kebab', 'Starters', 160, 'chicken65'],
+  ['Chicken Kebab (Half)', 'Starters', 160, 'chicken65'],
+  ['Chicken Kebab (Full)', 'Starters', 300, 'chicken65'],
   ['Mutton Chops', 'Mutton', 280, 'mutton'],
   ['Mutton Nalli', 'Mutton', 300, 'mutton'],
   ['Boiled Egg', 'Egg', 20, 'omelette'],
@@ -55,7 +56,7 @@ const MENU: [name: string, category: string, rupees: number, art: string][] = [
 ];
 
 /** Bump when seed menu items are added, so existing browsers receive them once. */
-export const MENU_SEED_VERSION = 2;
+export const MENU_SEED_VERSION = 3;
 
 /**
  * Adds seed menu items that an existing dataset doesn't have yet (matched by
@@ -63,11 +64,17 @@ export const MENU_SEED_VERSION = 2;
  * deleted afterwards are not resurrected.
  */
 export function migrateMenu(data: AppData): AppData | null {
-  if ((data.menuSeedVersion ?? 1) >= MENU_SEED_VERSION) return null;
-  const haveIds = new Set(data.menuItems.map((m) => m.id));
-  const haveNames = new Set(data.menuItems.map((m) => m.name.toLowerCase()));
+  const from = data.menuSeedVersion ?? 1;
+  if (from >= MENU_SEED_VERSION) return null;
+  let items = data.menuItems;
+  // v3: the single "Chicken Kebab" became Half / Full variants. Past lunches keep their snapshots.
+  if (from < 3) {
+    items = items.map((m) => (m.name.toLowerCase() === 'chicken kebab' ? { ...m, name: 'Chicken Kebab (Half)' } : m));
+  }
+  const haveIds = new Set(items.map((m) => m.id));
+  const haveNames = new Set(items.map((m) => m.name.toLowerCase()));
   const missing = seedMenu().filter((m) => !haveIds.has(m.id) && !haveNames.has(m.name.toLowerCase()));
-  return { ...data, menuItems: [...data.menuItems, ...missing], menuSeedVersion: MENU_SEED_VERSION };
+  return { ...data, menuItems: [...items, ...missing], menuSeedVersion: MENU_SEED_VERSION };
 }
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

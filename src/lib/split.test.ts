@@ -125,15 +125,15 @@ describe('demo data & balances', () => {
   const data: AppData = createDemoData();
   it('has 11 people, 13 menu items, 3 demo lunches', () => {
     expect(data.users).toHaveLength(11);
-    expect(data.menuItems).toHaveLength(30);
+    expect(data.menuItems).toHaveLength(31);
     expect(data.lunches).toHaveLength(3);
     expect(data.lunches.every((l) => l.isDemo)).toBe(true);
   });
   it('adds new menu items to existing v1 data once, without duplicates', () => {
     const old: AppData = { ...data, menuSeedVersion: undefined, menuItems: data.menuItems.slice(0, 13) };
     const migrated = migrateMenu(old)!;
-    expect(migrated.menuItems).toHaveLength(30);
-    expect(new Set(migrated.menuItems.map((m) => m.name)).size).toBe(30);
+    expect(migrated.menuItems).toHaveLength(31);
+    expect(new Set(migrated.menuItems.map((m) => m.name)).size).toBe(31);
     expect(migrateMenu(migrated)).toBeNull();
   });
   it('every lunch: shares sum to total', () => {
@@ -146,5 +146,20 @@ describe('demo data & balances', () => {
     expect(sum(personBalances(data).map((b) => b.net))).toBe(0);
     const pairs = pairBalances(data);
     expect(pairs.length).toBeGreaterThan(0);
+  });
+});
+
+describe('menu migration v2 -> v3', () => {
+  it('renames Chicken Kebab to Half and adds Full', () => {
+    const d = createDemoData();
+    const v2: AppData = {
+      ...d,
+      menuSeedVersion: 2,
+      menuItems: d.menuItems
+        .filter((m) => !m.name.startsWith('Chicken Kebab'))
+        .concat({ ...d.menuItems[0], id: 'm-chicken-kebab', name: 'Chicken Kebab' }),
+    };
+    const names = migrateMenu(v2)!.menuItems.map((m) => m.name).filter((n) => n.includes('Kebab')).sort();
+    expect(names).toEqual(['Chicken Kebab (Full)', 'Chicken Kebab (Half)']);
   });
 });
