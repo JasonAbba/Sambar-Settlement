@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import { BookOpen, HandCoins, History, Home, Plus, UtensilsCrossed, Users } from 'lucide-react';
+import { BookOpen, History, Home, Plus, UtensilsCrossed, Users } from 'lucide-react';
 import { cx } from '../lib/util';
 
 const NAV = [
@@ -9,11 +9,10 @@ const NAV = [
   { to: '/menu', label: 'Menu', short: 'Menu', icon: BookOpen },
   { to: '/people', label: 'People', short: 'People', icon: Users },
   { to: '/history', label: 'Lunch History', short: 'History', icon: History },
-  { to: '/settlements', label: 'Settlements', short: 'Settle', icon: HandCoins },
 ];
 
 // Mobile bottom bar order: Split sits in the middle as the primary action.
-const MOBILE_ORDER = ['/', '/menu', '/split', '/history', '/settlements', '/people'];
+const MOBILE_ORDER = ['/', '/menu', '/split', '/history', '/people'];
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -24,7 +23,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
       </div>
       {!compact && (
         <div className="leading-none">
-          <div className="font-display text-xl text-maroon-800">Chettiar Splitter</div>
+          <div className="font-display text-xl text-maroon-800">Sambar Settlement</div>
           <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-terracotta-500">Fair splits</div>
         </div>
       )}
@@ -104,7 +103,7 @@ export function Layout() {
         aria-label="Main"
       >
         <div className="mx-auto flex max-w-lg items-stretch justify-around px-1">
-          {MOBILE_ORDER.filter((p) => p !== '/people').map((path) => {
+          {MOBILE_ORDER.map((path) => {
             const item = NAV.find((n) => n.to === path)!;
             const Icon = item.icon;
             if (path === '/split') {

@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Check, Pencil, RotateCcw, Trash2, UserMinus, UserPlus, X } from 'lucide-react';
 import { useStore } from '../data/store';
-import { personBalances } from '../lib/lunch';
-import { formatINR } from '../lib/money';
-import { Avatar, Badge, PageHeader } from '../components/ui';
+import { Avatar, PageHeader } from '../components/ui';
 import { useConfirm, useToast } from '../components/feedback';
 import type { User } from '../types';
 
@@ -20,10 +18,9 @@ export default function PeoplePage() {
   const inactive = data.users.filter((u) => !u.isActive);
 
   const stats = useMemo(() => {
-    const balances = new Map(personBalances(data).map((b) => [b.userId, b]));
     const lunches = new Map<string, number>();
     for (const l of data.lunches) for (const id of l.attendees) lunches.set(id, (lunches.get(id) ?? 0) + 1);
-    return { balances, lunches };
+    return { lunches };
   }, [data]);
 
   const add = (e: React.FormEvent) => {
@@ -43,14 +40,12 @@ export default function PeoplePage() {
 
   const remove = async (u: User) => {
     const hasHistory = store.userHasHistory(u.id);
-    const owes = stats.balances.get(u.id);
     if (
       await confirm({
         title: hasHistory ? `Deactivate ${u.name}?` : `Remove ${u.name}?`,
         message: hasHistory ? (
           <>
             {u.name} appears in past lunches, so they’ll be moved to <strong>Inactive</strong> and kept in history.
-            {owes && (owes.owes > 0 || owes.isOwed > 0) && <> Their outstanding balances stay visible in Settlements.</>}
           </>
         ) : (
           <>{u.name} has no lunch history and will be removed completely.</>
@@ -65,7 +60,6 @@ export default function PeoplePage() {
   };
 
   const row = (u: User) => {
-    const b = stats.balances.get(u.id);
     const n = stats.lunches.get(u.id) ?? 0;
     const isEditing = editingId === u.id;
     return (
@@ -83,8 +77,6 @@ export default function PeoplePage() {
               <div className="truncate text-[15px] font-bold">{u.name}</div>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-500">
                 <span>{n} lunch{n === 1 ? '' : 'es'}</span>
-                {b && b.owes > 0 && <Badge tone="pending">owes {formatINR(b.owes)}</Badge>}
-                {b && b.isOwed > 0 && <Badge tone="paid">gets {formatINR(b.isOwed)}</Badge>}
               </div>
             </div>
             {u.isActive ? (

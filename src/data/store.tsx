@@ -227,7 +227,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
   if (!api) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-cream-100 text-ink-500">
-        <div className="animate-pulse font-display text-2xl text-maroon-700">Chettiar Splitter</div>
+        <div className="animate-pulse font-display text-2xl text-maroon-700">Sambar Settlement</div>
       </div>
     );
   }

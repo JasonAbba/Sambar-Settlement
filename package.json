@@ -1,9 +1,9 @@
 {
-  "name": "chettiar-splitter",
+  "name": "sambar-settlement",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Chettiar Splitter - lunch expense splitting for the Chettiar Karaikudi Mess gang. Good food. Good company. Fair splits.",
+  "description": "Sambar Settlement - lunch expense splitting for the Chettiar Karaikudi Mess gang. Good food. Good company. Fair splits.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

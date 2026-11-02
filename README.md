@@ -1,8 +1,8 @@
-# Chettiar Splitter 🍛
+# Sambar Settlement 🍛
 
 *Good food. Good company. Fair splits.*
 
-A mobile-first web app for our lunch group at **Chettiar Karaikudi Mess**. Record who came, what each person ate, and who paid. It works out exactly what everyone owes and tracks who has settled up.
+A mobile-first web app for our lunch group at **Chettiar Karaikudi Mess**. Record who came, what each person ate, and who paid. It shows clearly who ate what, how much each person pays the payer, and the total.
 
 **Live site:** https://jasonabba.github.io/Sambar-Settlement/
 
@@ -14,7 +14,6 @@ A mobile-first web app for our lunch group at **Chettiar Karaikudi Mess**. Recor
 - **Menu**: add, edit and delete dishes, search, filter by category, and set a photo by upload or URL, or pick a bundled illustration. *The seeded dishes and prices are placeholders.*
 - **People**: add, rename and deactivate people. Anyone who has lunch history is kept for past records.
 - **History**: every lunch with its full breakdown. You can edit a lunch, and payments already recorded are kept.
-- **Settlements**: mark shares as paid for each lunch, see net "who pays whom" balances across all lunches, and settle a pair in one tap.
 - **Demo data**: 3 sample lunches, labelled *Demo*. Use **Remove demo lunches** or **Reset demo data** on the dashboard.
 - **Phone-friendly** on iOS Safari and Android Chrome: safe-area insets, bottom tab bar, bottom-sheet dialogs, 16px inputs (no zoom on focus), numeric keypads for amounts, 44px+ touch targets, and Add to Home Screen support.
 
@@ -54,5 +53,5 @@ src/
   data/store.tsx         app state & actions
   data/seed.ts           demo people, placeholder menu, sample lunches
   components/            layout, modal/bottom sheet, toasts, dish illustrations, UI bits
-  pages/                 Dashboard, SplitLunch, Menu, People, History, LunchDetail, Settlements
+  pages/                 Dashboard, SplitLunch, Menu, People, History, LunchDetail
 ```

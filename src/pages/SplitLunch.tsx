@@ -848,6 +848,9 @@ function StepSummary({ draft, split, actualBill }: { draft: LunchDraft; split: R
                     <span className="truncate font-semibold">{userName(r.userId)}</span>
                     {r.userId === payer && <Badge tone="paid">Paid</Badge>}
                   </div>
+                  <div className="mt-0.5 text-xs leading-snug text-ink-500">
+                    {(draft.orders[r.userId] ?? []).map((l) => `${l.name}${l.quantity > 1 ? ` ×${l.quantity}` : ''}`).join(', ') || 'No dishes'}
+                  </div>
                 </td>
                 <td className="px-2 py-2.5 text-right tabular-nums text-ink-700">{formatINR(r.foodTotal)}</td>
                 <td className="px-2 py-2.5 text-right tabular-nums text-ink-500">{r.chargesShare ? formatINR(r.chargesShare, { signed: true }) : '—'}</td>

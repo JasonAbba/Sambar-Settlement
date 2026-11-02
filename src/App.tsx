@@ -8,7 +8,6 @@ import MenuPage from './pages/MenuPage';
 import PeoplePage from './pages/PeoplePage';
 import HistoryPage from './pages/HistoryPage';
 import LunchDetail from './pages/LunchDetail';
-import SettlementsPage from './pages/SettlementsPage';
 
 // HashRouter keeps deep links working on GitHub Pages (no server-side rewrites needed).
 export default function App() {
@@ -25,7 +24,6 @@ export default function App() {
               <Route path="people" element={<PeoplePage />} />
               <Route path="history" element={<HistoryPage />} />
               <Route path="history/:lunchId" element={<LunchDetail />} />
-              <Route path="settlements" element={<SettlementsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
