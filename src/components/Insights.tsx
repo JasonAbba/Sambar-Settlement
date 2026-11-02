@@ -1,6 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Crown, Drumstick, Flame, HandCoins, Repeat, Soup, Trophy, Utensils } from 'lucide-react';
+import { Crown, Drumstick, Flame, HandCoins, HeartHandshake, Medal, Repeat, Soup, Star, Trophy, Utensils } from 'lucide-react';
+import { dishOfTheWeek, forgottenDish, lunchBuddies, type Badge } from '../lib/fun';
+import { BadgeIcons, useBadges } from './Badges';
+import { DishImage } from './DishArt';
 import { useStore } from '../data/store';
 import { computeInsights, type Ranked } from '../lib/insights';
 import { formatINR } from '../lib/money';
@@ -73,6 +76,8 @@ export function Insights() {
 
   return (
     <div className="space-y-7">
+      <DishOfWeekCard />
+
       {/* Fun facts: swipeable on phones, grid on desktop */}
       <section>
         <h2 className="section-title">Fun facts</h2>
@@ -95,8 +100,125 @@ export function Insights() {
         <SpendChart timeline={ins.timeline} />
       </div>
 
-      <TopDishes dishes={ins.dishes.slice(0, 7)} />
+      <div className="grid gap-7 lg:grid-cols-2">
+        <LunchBuddies />
+        <TopDishes dishes={ins.dishes.slice(0, 7)} />
+      </div>
+
+      <HallOfFame />
     </div>
+  );
+}
+
+/* ---------------- Dish of the week ---------------- */
+
+function DishOfWeekCard() {
+  const { data } = useStore();
+  const { dish, window } = useMemo(() => dishOfTheWeek(data), [data]);
+  const forgotten = useMemo(() => forgottenDish(data), [data]);
+  if (!dish) return null;
+  const fan = dish.topFan ? data.users.find((u) => u.id === dish.topFan!.userId)?.name : null;
+
+  return (
+    <section className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
+      <div className="card flex overflow-hidden">
+        <div className="w-32 shrink-0 bg-cream-200 sm:w-40">
+          <DishImage image={dish.menuItem?.image ?? ''} category={dish.menuItem?.category ?? ''} alt={dish.name} />
+        </div>
+        <div className="min-w-0 flex-1 p-4">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-terracotta-500">
+            <Star className="h-4 w-4 fill-mustard-400 text-mustard-500" /> Dish of the {window === 'week' ? 'week' : 'season'}
+          </div>
+          <div className="mt-1 font-display text-xl leading-tight text-maroon-800">{dish.name}</div>
+          <div className="mt-1 text-sm text-ink-500">
+            Ordered {dish.qty}× across {dish.lunches} lunch{dish.lunches === 1 ? '' : 'es'}
+            {fan && <> · biggest fan: <strong className="text-ink-700">{fan}</strong></>}
+          </div>
+        </div>
+      </div>
+      {forgotten && (
+        <div className="card kolam-bg flex items-center gap-3 p-4">
+          <div className="h-14 w-16 shrink-0 overflow-hidden rounded-xl bg-cream-200">
+            <DishImage image={forgotten.item.image} category={forgotten.item.category} alt={forgotten.item.name} />
+          </div>
+          <p className="text-sm text-ink-700">
+            {forgotten.never ? 'Nobody has tried ' : 'Nobody’s had '}
+            <strong>{forgotten.item.name}</strong>
+            {forgotten.never ? ' yet' : ' in 3 weeks'} 👀
+            <span className="block text-xs text-ink-400">{formatINR(forgotten.item.price)} · someone be brave today</span>
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ---------------- Lunch buddies ---------------- */
+
+function LunchBuddies() {
+  const { data } = useStore();
+  const buddies = useMemo(() => lunchBuddies(data, 5), [data]);
+  const name = (id: string) => data.users.find((u) => u.id === id)?.name ?? 'Unknown';
+  if (!buddies.length) return null;
+  const max = buddies[0].count;
+  return (
+    <section>
+      <h2 className="section-title">
+        <HeartHandshake className="h-5 w-5 text-terracotta-500" /> Lunch buddies
+      </h2>
+      <ul className="card divide-y divide-cream-200">
+        {buddies.map((p, i) => (
+          <li key={`${p.a}-${p.b}`} className="flex items-center gap-3 px-4 py-3">
+            <div className="flex -space-x-2">
+              <Avatar id={p.a} name={name(p.a)} size="sm" />
+              <Avatar id={p.b} name={name(p.b)} size="sm" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[15px] font-semibold">
+                {name(p.a)} &amp; {name(p.b)} {i === 0 && <span title="Most inseparable">💞</span>}
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-cream-100">
+                <div className="h-full rounded-full bg-terracotta-400" style={{ width: `${(p.count / max) * 100}%` }} />
+              </div>
+            </div>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-ink-700">{p.count}× together</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/* ---------------- Hall of fame (all badges) ---------------- */
+
+function HallOfFame() {
+  const { data } = useStore();
+  const badges = useBadges();
+  const byBadge = new Map<string, { badge: Badge; holders: string[] }>();
+  for (const [userId, list] of badges) {
+    for (const b of list) {
+      const e = byBadge.get(b.id) ?? { badge: b, holders: [] };
+      e.holders.push(data.users.find((u) => u.id === userId)?.name ?? 'Unknown');
+      byBadge.set(b.id, e);
+    }
+  }
+  if (!byBadge.size) return null;
+  return (
+    <section>
+      <h2 className="section-title">
+        <Medal className="h-5 w-5 text-mustard-500" /> Hall of fame
+      </h2>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+        {[...byBadge.values()].map(({ badge, holders }) => (
+          <div key={badge.id} className="card p-3">
+            <div className="text-2xl leading-none">{badge.emoji}</div>
+            <div className="mt-1.5 text-sm font-extrabold text-maroon-800">{badge.label}</div>
+            <div className="truncate text-sm font-semibold text-ink-700">{holders.join(', ')}</div>
+            <div className="mt-0.5 text-xs leading-snug text-ink-400">{badge.description}</div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -141,7 +263,10 @@ function Leaderboard({ spenders, regulars, payers }: { spenders: Ranked[]; regul
               <Avatar id={r.id} name={r.label} size="sm" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="truncate text-[15px] font-semibold">{r.label}</span>
+                  <span className="flex min-w-0 items-center gap-1">
+                    <span className="truncate text-[15px] font-semibold">{r.label}</span>
+                    <BadgeIcons userId={r.id} max={2} />
+                  </span>
                   <span className="shrink-0 text-sm font-bold tabular-nums text-ink-700">{fmt(r)}</span>
                 </div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-cream-100">

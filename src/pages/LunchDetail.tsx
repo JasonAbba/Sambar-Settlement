@@ -5,6 +5,7 @@ import { formatINR } from '../lib/money';
 import { formatDate } from '../lib/util';
 import { Avatar, Badge, EmptyState } from '../components/ui';
 import { useConfirm, useToast } from '../components/feedback';
+import { BadgeIcons, ShareLunch } from '../components/Badges';
 
 export default function LunchDetail() {
   const { lunchId } = useParams();
@@ -122,6 +123,8 @@ export default function LunchDetail() {
         </div>
       </section>
 
+      <ShareLunch lunchId={lunch.id} />
+
       {diff !== 0 && (
         <div className="flex items-start gap-2 rounded-xl border border-maroon-300 bg-maroon-50 p-3 text-sm text-maroon-800">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -146,7 +149,10 @@ export default function LunchDetail() {
               <header className="flex items-center gap-3 px-4 py-3">
                 <Avatar id={id} name={userName(id)} />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-bold">{userName(id)}</div>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate font-bold">{userName(id)}</span>
+                    <BadgeIcons userId={id} max={3} />
+                  </div>
                   <div className="text-xs text-ink-500">{isPayer ? 'Paid the bill' : `Pays ${payer}`}</div>
                 </div>
                 <div className="text-right">

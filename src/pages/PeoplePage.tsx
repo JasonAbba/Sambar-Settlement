@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Check, Pencil, RotateCcw, Trash2, UserMinus, UserPlus, X } from 'lucide-react';
 import { useStore } from '../data/store';
 import { Avatar, PageHeader } from '../components/ui';
+import { BadgeChips } from '../components/Badges';
 import { useConfirm, useToast } from '../components/feedback';
 import type { User } from '../types';
 
@@ -78,6 +79,7 @@ export default function PeoplePage() {
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-500">
                 <span>{n} lunch{n === 1 ? '' : 'es'}</span>
               </div>
+              <BadgeChips userId={u.id} />
             </div>
             {u.isActive ? (
               <>
