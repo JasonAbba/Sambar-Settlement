@@ -93,6 +93,13 @@ export function Layout() {
           )}
         >
           <Outlet />
+          {!inWizard && (
+            <footer className="mt-12 text-center text-sm text-ink-400">
+              <div className="temple-border mx-auto mb-4 w-24 opacity-50" />
+              Made with <span aria-label="love">❤️</span> by <strong className="text-maroon-700">Jason</strong>,
+              <br className="sm:hidden" /> because he was frustrated of splitting the bill.
+            </footer>
+          )}
         </main>
       </div>
 
