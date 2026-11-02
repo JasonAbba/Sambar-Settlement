@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MessageCircle, Share2 } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 import { useStore } from '../data/store';
 import { computeBadges, lunchShareText, whatsappUrl, type Badge } from '../lib/fun';
 import { useToast } from './feedback';
@@ -92,7 +92,7 @@ export function ShareLunch({ lunchId, className }: { lunchId: string; className?
   return (
     <div className={`flex gap-2 ${className ?? ''}`}>
       <a href={whatsappUrl(text)} target="_blank" rel="noopener noreferrer" className="btn flex-1 bg-[#1F8F4E] text-white shadow-sm hover:bg-[#197A42] active:bg-[#146636]">
-        <MessageCircle className="h-5 w-5" /> Share on WhatsApp
+        <img src={`${import.meta.env.BASE_URL}whatsapp.svg`} alt="" aria-hidden className="h-6 w-6" /> Share on WhatsApp
       </a>
       <button
         type="button"

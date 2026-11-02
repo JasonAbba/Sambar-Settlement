@@ -65,3 +65,7 @@ src/
   components/            layout, modal/bottom sheet, toasts, dish illustrations, UI bits
   pages/                 Dashboard, SplitLunch, Menu, People, History, LunchDetail
 ```
+
+## Credits
+
+- WhatsApp logo: [WhatsApp.svg](https://commons.wikimedia.org/wiki/File:WhatsApp.svg), public domain, via Wikimedia Commons.
