@@ -22,6 +22,7 @@ import { formatDate, relativeDay } from '../lib/util';
 import { AvatarStack, Badge, EmptyState, StatCard } from '../components/ui';
 import { useConfirm, useToast } from '../components/feedback';
 import { loadDraftRaw } from '../data/repository';
+import { Insights } from '../components/Insights';
 
 export default function Dashboard() {
   const store = useStore();
@@ -38,7 +39,7 @@ export default function Dashboard() {
       lunches: data.lunches.length,
       people: data.users.filter((u) => u.isActive).length,
       total,
-      avg: data.lunches.length ? Math.round(total / data.lunches.length) : 0,
+      avg: data.lunches.length ? Math.round(total / data.lunches.length / 100) * 100 : 0,
     };
   }, [data]);
 
@@ -73,6 +74,8 @@ export default function Dashboard() {
         <StatCard label="Total spent" value={formatINR(stats.total)} icon={<IndianRupee className="h-4 w-4" />} tone="mustard" />
         <StatCard label="Avg bill" value={formatINR(stats.avg)} icon={<TrendingUp className="h-4 w-4" />} />
       </section>
+
+      <Insights />
 
       {/* Recent */}
       <section>
