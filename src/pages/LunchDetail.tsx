@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Pencil, Trash2, UtensilsCrossed } from 'lucide-react';
 import { useLookups, useStore } from '../data/store';
+import { orderUnits } from '../types';
 import { formatINR } from '../lib/money';
 import { formatDate } from '../lib/util';
 import { Avatar, Badge, EmptyState } from '../components/ui';
@@ -36,7 +37,7 @@ export default function LunchDetail() {
   const others = lunch.attendees.filter((id) => id !== payerId);
   const toCollect = shares.filter((s) => s.userId !== payerId).reduce((a, s) => a + s.amountOwed, 0);
   const diff = lunch.actualBillAmount == null ? 0 : lunch.actualBillAmount - lunch.totalAmount;
-  const dishCount = orders.reduce((a, o) => a + o.quantity, 0);
+  const dishCount = Math.round(orders.reduce((a, o) => a + orderUnits(o), 0));
 
   const del = async () => {
     if (
@@ -164,10 +165,18 @@ export default function LunchDetail() {
                 {mine.length === 0 && <li className="text-ink-400">No dishes</li>}
                 {mine.map((o) => (
                   <li key={o.id} className="flex justify-between gap-2">
-                    <span className="truncate text-ink-700">
-                      {o.itemNameSnapshot} <span className="text-ink-400">× {o.quantity}</span>
+                    <span className="min-w-0 text-ink-700">
+                      <span className="block truncate">
+                        {o.itemNameSnapshot} <span className="text-ink-400">× {o.quantity}</span>
+                      </span>
+                      {o.shareUserIds && o.shareUserIds.length > 1 && (
+                        <span className="block text-xs text-terracotta-600">
+                          🤝 shared ÷{o.shareUserIds.length} with{' '}
+                          {o.shareUserIds.filter((u) => u !== id).map(userName).join(', ')} · {formatINR(o.unitPriceSnapshot * o.quantity)} total
+                        </span>
+                      )}
                     </span>
-                    <span className="tabular-nums text-ink-700">{formatINR(o.totalPrice)}</span>
+                    <span className="shrink-0 tabular-nums text-ink-700">{formatINR(o.totalPrice)}</span>
                   </li>
                 ))}
                 {s && s.chargesShare !== 0 && (

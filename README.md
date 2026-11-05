@@ -15,6 +15,7 @@ Made with ❤️ by Jason, because he was frustrated of splitting the bill.
 3. **Details:** the date, who paid, and the bill amount (optional, used to check the dishes add up).
 4. **Who came:** tick the people at lunch. You can add a new person right there.
 5. **Orders:** tap **Add dishes** under each person and pick from the menu. Use **+ / −** for quantities. Anything not on the menu can be added as a one-off item.
+   - **Shared a dish?** Add it to whoever ordered it (e.g. one Full Kebab on Jason), tap 🤝 on that dish and tick who shared it. The cost is split equally to the paisa and shows on each sharer's card.
 6. **Bill:** add parcel charges, discounts or other extras, split equally or by food cost. If the bill and the dishes don't match, the app shows the difference.
 7. **Split:** check everyone's share, then tap **Confirm & save**.
 8. On the lunch page, tap **Share on WhatsApp** and send the summary to the group.
@@ -26,6 +27,7 @@ Made with ❤️ by Jason, because he was frustrated of splitting the bill.
 - **Fair maths:** each person pays only for what they ordered, plus their part of any extra charges.
   - Extra charges and discounts are split equally by default, or by food cost.
   - Money is calculated in whole paise, and shares always add up exactly to the total (any leftover paise are assigned by a fixed rule, never at random).
+- **Shared dishes:** one dish split equally between any number of people (₹160 ÷ 3 = ₹53.34 + ₹53.33 + ₹53.33). Badges and stats count each sharer's fraction, so a shared kebab still counts as one dish.
 - **Bill check:** if the restaurant bill doesn't match the dishes entered, the app shows the difference. You can add it as an adjustment with one tap; nothing is changed silently.
 - **Lunch page:** who paid, what each person pays them, who ate what, and the total. Lunches can be edited or deleted.
 - **WhatsApp share:** sends a ready-to-paste summary to any chat. It uses a `wa.me` link, so there's no API or setup. The share icon next to the button opens the phone's normal share menu.

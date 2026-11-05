@@ -74,7 +74,19 @@ export interface LunchOrder {
   itemNameSnapshot: string;
   unitPriceSnapshot: Paise;
   quantity: number;
+  /** This person's cost for the line (their portion, if the dish was shared). */
   totalPrice: Paise;
+  /** Set when a dish was shared: same id on every sharer's row. */
+  shareGroup?: string;
+  /** Who ordered the shared dish. */
+  shareOwnerId?: string;
+  /** Everyone who shared it (including the owner). */
+  shareUserIds?: string[];
+}
+
+/** How much of a dish an order row represents (a dish shared by 3 counts 1/3 per person). */
+export function orderUnits(o: LunchOrder): number {
+  return o.shareUserIds && o.shareUserIds.length > 1 ? o.quantity / o.shareUserIds.length : o.quantity;
 }
 
 export type SettlementStatus = 'pending' | 'paid';

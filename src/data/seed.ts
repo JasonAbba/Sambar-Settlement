@@ -53,10 +53,12 @@ const MENU: [name: string, category: string, rupees: number, art: string][] = [
   ['Coke Zero', 'Drinks', 40, 'drink'],
   ['Sprite Zero', 'Drinks', 40, 'drink'],
   ['Goli Soda', 'Drinks', 25, 'drink'],
+  // Added in menu v4
+  ['Butter Chicken', 'Chicken', 120, 'mutton'],
 ];
 
 /** Bump when seed menu items are added, so existing browsers receive them once. */
-export const MENU_SEED_VERSION = 3;
+export const MENU_SEED_VERSION = 4;
 
 /**
  * Adds seed menu items that an existing dataset doesn't have yet (matched by

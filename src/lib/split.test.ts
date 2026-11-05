@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { allocate, computeSplit } from './split';
 import { formatINR, parseRupees, paiseToInput } from './money';
-import { buildLunch, emptyDraft, pairBalances, personBalances, type LunchDraft } from './lunch';
+import { buildLunch, draftFromRecord, emptyDraft, pairBalances, personBalances, type LunchDraft } from './lunch';
 import { createDemoData, migrateMenu } from '../data/seed';
-import type { AdditionalCharge, AppData } from '../types';
+import { orderUnits, type AdditionalCharge, type AppData } from '../types';
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
@@ -125,15 +125,15 @@ describe('demo data & balances', () => {
   const data: AppData = createDemoData();
   it('has 11 people, 13 menu items, 3 demo lunches', () => {
     expect(data.users).toHaveLength(11);
-    expect(data.menuItems).toHaveLength(31);
+    expect(data.menuItems).toHaveLength(32);
     expect(data.lunches).toHaveLength(3);
     expect(data.lunches.every((l) => l.isDemo)).toBe(true);
   });
   it('adds new menu items to existing v1 data once, without duplicates', () => {
     const old: AppData = { ...data, menuSeedVersion: undefined, menuItems: data.menuItems.slice(0, 13) };
     const migrated = migrateMenu(old)!;
-    expect(migrated.menuItems).toHaveLength(31);
-    expect(new Set(migrated.menuItems.map((m) => m.name)).size).toBe(31);
+    expect(migrated.menuItems).toHaveLength(32);
+    expect(new Set(migrated.menuItems.map((m) => m.name)).size).toBe(32);
     expect(migrateMenu(migrated)).toBeNull();
   });
   it('every lunch: shares sum to total', () => {
@@ -161,5 +161,53 @@ describe('menu migration v2 -> v3', () => {
     };
     const names = migrateMenu(v2)!.menuItems.map((m) => m.name).filter((n) => n.includes('Kebab')).sort();
     expect(names).toEqual(['Chicken Kebab (Full)', 'Chicken Kebab (Half)']);
+  });
+});
+
+describe('shared dishes', () => {
+  const kebab = { key: 'k', menuItemId: 'm-kebab', name: 'Chicken Kebab (Full)', unitPrice: 16000, quantity: 1 };
+  const base: LunchDraft = {
+    ...emptyDraft(),
+    date: '2026-11-05',
+    paidByUserId: 'j',
+    attendees: ['j', 's', 'h', 'r'],
+    orders: {
+      j: [{ ...kebab, sharedWith: ['s', 'h'] }, { key: 'a', menuItemId: 'm1', name: 'Chicken Meals', unitPrice: 18000, quantity: 1 }],
+      s: [{ key: 'b', menuItemId: 'm2', name: 'Lime Soda', unitPrice: 4000, quantity: 1 }],
+      h: [],
+      r: [{ key: 'c', menuItemId: 'm3', name: 'Parotta', unitPrice: 3000, quantity: 2 }],
+    },
+  };
+
+  it('splits a shared dish equally to the paisa among the sharers only', () => {
+    const b = buildLunch(base, null);
+    const owed = Object.fromEntries(b.settlements.map((s) => [s.userId, s.foodTotal]));
+    // ₹160 ÷ 3 = 53.34 + 53.33 + 53.33
+    expect(owed.j).toBe(5334 + 18000);
+    expect(owed.s).toBe(5333 + 4000);
+    expect(owed.h).toBe(5333);
+    expect(owed.r).toBe(6000);
+    expect(b.record.subtotal).toBe(16000 + 18000 + 4000 + 6000);
+    const kebabRows = b.orders.filter((o) => o.shareGroup);
+    expect(kebabRows).toHaveLength(3);
+    expect(kebabRows.reduce((a, o) => a + o.totalPrice, 0)).toBe(16000);
+    expect(kebabRows.reduce((a, o) => a + orderUnits(o), 0)).toBeCloseTo(1);
+  });
+
+  it('round-trips sharing through edit (draftFromRecord)', () => {
+    const b = buildLunch(base, null, undefined, { id: 'L1' });
+    const data: AppData = { version: 1, users: [], menuItems: [], lunches: [b.record], orders: b.orders, settlements: b.settlements };
+    const d = draftFromRecord(data, 'L1')!;
+    expect(d.orders.j.find((l) => l.name.includes('Kebab'))?.sharedWith?.sort()).toEqual(['h', 's']);
+    expect(d.orders.s.some((l) => l.name.includes('Kebab'))).toBe(false);
+    const again = buildLunch(d, null, { record: b.record, settlements: b.settlements });
+    expect(again.settlements.map((s) => s.amountOwed)).toEqual(b.settlements.map((s) => s.amountOwed));
+  });
+
+  it('ignores sharers who are no longer attendees', () => {
+    const b = buildLunch({ ...base, attendees: ['j', 's', 'r'] }, null);
+    const owed = Object.fromEntries(b.settlements.map((s) => [s.userId, s.foodTotal]));
+    expect(owed.j).toBe(8000 + 18000);
+    expect(owed.s).toBe(8000 + 4000);
   });
 });

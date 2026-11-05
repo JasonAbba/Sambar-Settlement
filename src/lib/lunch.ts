@@ -1,6 +1,6 @@
 import type { AdditionalCharge, AppData, LunchOrder, LunchRecord, Paise, Settlement } from '../types';
 import { paiseToInput } from './money';
-import { computeSplit, type SplitResult } from './split';
+import { allocate, computeSplit, type SplitResult } from './split';
 import { nowISO, todayISO, uid } from './util';
 
 export interface DraftLine {
@@ -9,6 +9,8 @@ export interface DraftLine {
   name: string;
   unitPrice: Paise;
   quantity: number;
+  /** Other attendees who shared this dish with its owner (the person whose list it's in). Cost is split equally. */
+  sharedWith?: string[];
 }
 
 /** In-progress lunch, as edited in the Split wizard. */
@@ -40,11 +42,46 @@ export function lineTotal(l: DraftLine): Paise {
   return l.unitPrice * l.quantity;
 }
 
+/** Everyone eating a line: its owner plus sharers, limited to attendees, in attendee order. */
+export function lineParticipants(draft: LunchDraft, ownerId: string, l: DraftLine): string[] {
+  const set = new Set([ownerId, ...(l.sharedWith ?? [])]);
+  return draft.attendees.filter((id) => set.has(id));
+}
+
+export interface Portion {
+  ownerId: string;
+  line: DraftLine;
+  /** Index of the line in the whole draft, for stable ids. */
+  lineIndex: number;
+  userId: string;
+  amount: Paise;
+  participants: string[];
+}
+
+/**
+ * Each person's part of each dish. Unshared dishes belong wholly to their
+ * owner; shared dishes are split equally to the paisa (remainder paise go to
+ * the earliest attendees, deterministically) so portions always sum exactly.
+ */
+export function draftPortions(draft: LunchDraft): Portion[] {
+  const out: Portion[] = [];
+  let lineIndex = 0;
+  for (const ownerId of draft.attendees) {
+    for (const l of draft.orders[ownerId] ?? []) {
+      const idx = lineIndex++;
+      if (l.quantity <= 0) continue;
+      const participants = lineParticipants(draft, ownerId, l);
+      const amounts = allocate(lineTotal(l), participants.map(() => 1));
+      participants.forEach((userId, i) => out.push({ ownerId, line: l, lineIndex: idx, userId, amount: amounts[i], participants }));
+    }
+  }
+  return out;
+}
+
 export function draftFoodTotals(draft: LunchDraft): Record<string, Paise> {
   const totals: Record<string, Paise> = {};
-  for (const id of draft.attendees) {
-    totals[id] = (draft.orders[id] ?? []).reduce((a, l) => a + lineTotal(l), 0);
-  }
+  for (const id of draft.attendees) totals[id] = 0;
+  for (const p of draftPortions(draft)) totals[p.userId] += p.amount;
   return totals;
 }
 
@@ -86,23 +123,22 @@ export function buildLunch(
   const now = nowISO();
   const split = computeDraftSplit(draft);
 
-  const orders: LunchOrder[] = [];
-  for (const userId of draft.attendees) {
-    for (const l of draft.orders[userId] ?? []) {
-      if (l.quantity <= 0) continue;
-      orders.push({
-        // Deterministic & sortable, so dish order survives a round-trip through the database.
-        id: `ord-${id}-${String(orders.length).padStart(3, '0')}`,
-        lunchRecordId: id,
-        userId,
-        menuItemId: l.menuItemId,
-        itemNameSnapshot: l.name,
-        unitPriceSnapshot: l.unitPrice,
-        quantity: l.quantity,
-        totalPrice: lineTotal(l),
-      });
-    }
-  }
+  // One order row per person per dish; a shared dish becomes one row per sharer holding their portion.
+  const orders: LunchOrder[] = draftPortions(draft).map((p, i) => {
+    const shared = p.participants.length > 1;
+    return {
+      // Deterministic & sortable, so dish order survives a round-trip through the database.
+      id: `ord-${id}-${String(i).padStart(3, '0')}`,
+      lunchRecordId: id,
+      userId: p.userId,
+      menuItemId: p.line.menuItemId,
+      itemNameSnapshot: p.line.name,
+      unitPriceSnapshot: p.line.unitPrice,
+      quantity: p.line.quantity,
+      totalPrice: p.amount,
+      ...(shared ? { shareGroup: `${id}-g${String(p.lineIndex).padStart(3, '0')}`, shareOwnerId: p.ownerId, shareUserIds: p.participants } : {}),
+    };
+  });
 
   const settlements: Settlement[] = split.rows.map((row) => {
     const isPayer = row.userId === draft.paidByUserId;
@@ -148,7 +184,23 @@ export function draftFromRecord(data: AppData, lunchId: string): LunchDraft | nu
   if (!record) return null;
   const orders: Record<string, DraftLine[]> = {};
   for (const id of record.attendees) orders[id] = [];
+  const seenGroups = new Set<string>();
   for (const o of data.orders.filter((o) => o.lunchRecordId === lunchId)) {
+    if (o.shareGroup) {
+      // A shared dish is stored once per sharer; rebuild it as one line on its owner.
+      if (seenGroups.has(o.shareGroup)) continue;
+      seenGroups.add(o.shareGroup);
+      const owner = o.shareOwnerId ?? o.userId;
+      (orders[owner] ??= []).push({
+        key: uid('ln'),
+        menuItemId: o.menuItemId,
+        name: o.itemNameSnapshot,
+        unitPrice: o.unitPriceSnapshot,
+        quantity: o.quantity,
+        sharedWith: (o.shareUserIds ?? []).filter((id) => id !== owner),
+      });
+      continue;
+    }
     (orders[o.userId] ??= []).push({
       key: uid('ln'),
       menuItemId: o.menuItemId,

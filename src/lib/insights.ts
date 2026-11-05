@@ -1,4 +1,4 @@
-import type { AppData, Paise } from '../types';
+import { orderUnits, type AppData, type Paise } from '../types';
 
 export interface Ranked {
   id: string;
@@ -59,11 +59,11 @@ export function computeInsights(data: AppData): Insights {
   let biryaniCount = 0;
   for (const o of data.orders) {
     const key = o.itemNameSnapshot;
-    dishQty.set(key, (dishQty.get(key) ?? 0) + o.quantity);
+    dishQty.set(key, (dishQty.get(key) ?? 0) + orderUnits(o));
     const cat = (o.menuItemId && menu.get(o.menuItemId)?.category) || 'Other';
-    catQty.set(cat, (catQty.get(cat) ?? 0) + o.quantity);
-    totalDishes += o.quantity;
-    if (/biryani/i.test(o.itemNameSnapshot)) biryaniCount += o.quantity;
+    catQty.set(cat, (catQty.get(cat) ?? 0) + orderUnits(o));
+    totalDishes += orderUnits(o);
+    if (/biryani/i.test(o.itemNameSnapshot)) biryaniCount += orderUnits(o);
   }
 
   const spenders = [...spend].map(([id, v]) => ({ id, label: userLabel(id), value: v, sub: `${attend.get(id) ?? 0} lunches` })).sort(byValue);

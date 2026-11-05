@@ -1,4 +1,4 @@
-import type { AppData, LunchOrder, MenuItem } from '../types';
+import { orderUnits, type AppData, type LunchOrder, type MenuItem } from '../types';
 import { formatINR } from './money';
 import { formatDate, todayISO } from './util';
 
@@ -14,7 +14,7 @@ export function lunchShareText(data: AppData, lunchId: string, link?: string): s
   const dishes = (uid: string) =>
     orders
       .filter((o) => o.userId === uid)
-      .map((o) => (o.quantity > 1 ? `${o.itemNameSnapshot} ×${o.quantity}` : o.itemNameSnapshot))
+      .map((o) => (o.quantity > 1 ? `${o.itemNameSnapshot} ×${o.quantity}` : o.itemNameSnapshot) + (o.shareUserIds && o.shareUserIds.length > 1 ? ` (shared ÷${o.shareUserIds.length})` : ''))
       .join(', ') || 'no dishes';
 
   const lines = [`🍛 *Sambar Settlement* · ${formatDate(lunch.date)}`, `*${payer}* paid ${formatINR(lunch.actualBillAmount ?? lunch.totalAmount)}`, ''];
@@ -70,13 +70,13 @@ export function computeBadges(data: AppData): Map<string, Badge[]> {
   for (const o of data.orders) {
     const name = o.itemNameSnapshot;
     const cat = dishCategory(o, menu);
-    if (/chicken/i.test(name) || cat === 'Chicken') bump('chicken', o.userId, o.quantity);
-    if (/mutton|nalli|chops/i.test(name) || cat === 'Mutton') bump('mutton', o.userId, o.quantity);
-    if (/biryani/i.test(name) || cat === 'Biryani') bump('biryani', o.userId, o.quantity);
-    if (/fish/i.test(name) || cat === 'Fish') bump('fish', o.userId, o.quantity);
-    if (/curd rice/i.test(name)) bump('curd', o.userId, o.quantity);
-    if (cat === 'Drinks' || /soda|coke|sprite|juice|lassi/i.test(name)) bump('drinks', o.userId, o.quantity);
-    if (/parotta|chapati/i.test(name)) bump('bread', o.userId, o.quantity);
+    if (/chicken/i.test(name) || cat === 'Chicken') bump('chicken', o.userId, orderUnits(o));
+    if (/mutton|nalli|chops/i.test(name) || cat === 'Mutton') bump('mutton', o.userId, orderUnits(o));
+    if (/biryani/i.test(name) || cat === 'Biryani') bump('biryani', o.userId, orderUnits(o));
+    if (/fish/i.test(name) || cat === 'Fish') bump('fish', o.userId, orderUnits(o));
+    if (/curd rice/i.test(name)) bump('curd', o.userId, orderUnits(o));
+    if (cat === 'Drinks' || /soda|coke|sprite|juice|lassi/i.test(name)) bump('drinks', o.userId, orderUnits(o));
+    if (/parotta|chapati/i.test(name)) bump('bread', o.userId, orderUnits(o));
   }
 
   // Per-lunch facts
@@ -184,9 +184,9 @@ export function dishOfTheWeek(data: AppData): { dish: DishOfWeek | null; window:
   for (const o of data.orders) {
     if (!ids.has(o.lunchRecordId)) continue;
     const k = o.itemNameSnapshot;
-    qty.set(k, (qty.get(k) ?? 0) + o.quantity);
+    qty.set(k, (qty.get(k) ?? 0) + orderUnits(o));
     const f = fans.get(k) ?? new Map();
-    f.set(o.userId, (f.get(o.userId) ?? 0) + o.quantity);
+    f.set(o.userId, (f.get(o.userId) ?? 0) + orderUnits(o));
     fans.set(k, f);
     inLunches.set(k, (inLunches.get(k) ?? new Set()).add(o.lunchRecordId));
   }

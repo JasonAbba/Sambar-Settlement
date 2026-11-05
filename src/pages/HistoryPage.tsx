@@ -6,6 +6,7 @@ import { sortLunchesDesc } from '../lib/lunch';
 import { formatINR } from '../lib/money';
 import { cx, formatDate, relativeDay } from '../lib/util';
 import { Badge, EmptyState, PageHeader } from '../components/ui';
+import { orderUnits } from '../types';
 
 export default function HistoryPage() {
   const { data } = useStore();
@@ -13,7 +14,7 @@ export default function HistoryPage() {
   const shown = useMemo(() => {
     return sortLunchesDesc(data.lunches).map((l) => {
       const settlements = data.settlements.filter((s) => s.lunchRecordId === l.id);
-      const dishes = data.orders.filter((o) => o.lunchRecordId === l.id).reduce((a, o) => a + o.quantity, 0);
+      const dishes = Math.round(data.orders.filter((o) => o.lunchRecordId === l.id).reduce((a, o) => a + orderUnits(o), 0));
       return { l, settlements, dishes };
     });
   }, [data]);

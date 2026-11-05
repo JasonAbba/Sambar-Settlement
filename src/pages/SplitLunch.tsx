@@ -6,8 +6,10 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  Handshake,
   Minus,
   Package,
+  Pencil,
   Percent,
   Plus,
   PlusCircle,
@@ -16,6 +18,7 @@ import {
   Search,
   Trash2,
   UserPlus,
+  Users,
   UtensilsCrossed,
   Wallet,
   X,
@@ -26,7 +29,9 @@ import {
   computeDraftSplit,
   draftFromRecord,
   draftItemCount,
+  draftPortions,
   emptyDraft,
+  lineParticipants,
   lineTotal,
   sortAttendees,
   type DraftLine,
@@ -34,7 +39,8 @@ import {
 } from '../lib/lunch';
 import { formatINR, isValidRupeeInput, paiseToInput, parseRupees } from '../lib/money';
 import { cx, formatDate, uid } from '../lib/util';
-import { Avatar, Badge, EmptyState, QtyStepper, RupeeInput } from '../components/ui';
+import { Avatar, AvatarStack, Badge, EmptyState, QtyStepper, RupeeInput } from '../components/ui';
+import { allocate } from '../lib/split';
 import { Modal } from '../components/Modal';
 import { DishImage } from '../components/DishArt';
 import { useConfirm, useToast } from '../components/feedback';
@@ -109,7 +115,8 @@ export default function SplitLunch() {
     if (s === 1 && draft.attendees.length === 0) return fail('Select at least one person who came for lunch.');
     if (s === 2) {
       if (itemCount === 0) return fail('Add at least one dish.');
-      const empty = draft.attendees.filter((id) => !(draft.orders[id] ?? []).length);
+      const eating = new Set(draftPortions(draft).map((p) => p.userId));
+      const empty = draft.attendees.filter((id) => !eating.has(id));
       if (empty.length) {
         return confirm({
           title: 'Some people have no dishes',
@@ -444,12 +451,24 @@ function StepOrders({
 }) {
   const { userName } = useLookups();
   const foodOf = (id: string) => totals.find((t) => t.userId === id)?.foodTotal ?? 0;
+  const [sharing, setSharing] = useState<{ ownerId: string; key: string } | null>(null);
+  const portions = useMemo(() => draftPortions(draft), [draft]);
+  const portionOf = (ownerId: string, key: string, userId: string) =>
+    portions.find((p) => p.ownerId === ownerId && p.line.key === key && p.userId === userId);
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-ink-500">Tap <strong>Add dishes</strong> under each person. Use + / − to change quantities.</p>
+      <p className="text-sm text-ink-500">
+        Tap <strong>Add dishes</strong> under each person. Shared a dish? Add it to whoever ordered it, then tap{' '}
+        <span className="inline-flex translate-y-0.5 items-center rounded-md bg-terracotta-100 px-1 text-terracotta-600">
+          <Handshake className="h-4 w-4" />
+        </span>{' '}
+        to split it.
+      </p>
       {draft.attendees.map((id) => {
         const lines = draft.orders[id] ?? [];
+        // Dishes someone else ordered that this person shared.
+        const incoming = portions.filter((p) => p.userId === id && p.ownerId !== id);
         return (
           <section key={id} className="card overflow-hidden">
             <header className="flex items-center gap-3 border-b border-cream-200 bg-cream-50 px-4 py-3">
@@ -460,32 +479,77 @@ function StepOrders({
                   {id === draft.paidByUserId && <Badge tone="pending">Paid bill</Badge>}
                 </div>
                 <div className="text-xs text-ink-500">
-                  {lines.reduce((a, l) => a + l.quantity, 0)} item(s)
+                  {lines.reduce((a, l) => a + l.quantity, 0)} item(s){incoming.length > 0 && ` + ${incoming.length} shared`}
                 </div>
               </div>
               <div className="text-right text-lg font-extrabold tabular-nums text-maroon-800">{formatINR(foodOf(id))}</div>
             </header>
-            {lines.length > 0 && (
+            {(lines.length > 0 || incoming.length > 0) && (
               <ul className="divide-y divide-cream-200">
-                {lines.map((l) => (
-                  <li key={l.key} className="flex items-center gap-2 px-4 py-2.5">
+                {lines.map((l) => {
+                  const parts = lineParticipants(draft, id, l);
+                  const shared = parts.length > 1;
+                  const mine = portionOf(id, l.key, id)?.amount ?? lineTotal(l);
+                  return (
+                    <li key={l.key} className="px-4 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <div className="min-w-0 flex-1">
+                          <div className="line-clamp-2 text-[15px] font-semibold leading-snug">{l.name}</div>
+                          <div className="text-xs tabular-nums text-ink-500">
+                            {formatINR(l.unitPrice)} × {l.quantity} = <strong className="text-ink-700">{formatINR(lineTotal(l))}</strong>
+                          </div>
+                        </div>
+                        <QtyStepper
+                          value={l.quantity}
+                          min={1}
+                          onChange={(q) => setLines(id, (ls) => ls.map((x) => (x.key === l.key ? { ...x, quantity: q } : x)))}
+                        />
+                        <button
+                          className={cx('icon-btn', shared ? 'bg-terracotta-100 text-terracotta-600' : 'text-ink-500')}
+                          aria-label={`Share ${l.name} with others`}
+                          title="Shared this dish? Split it"
+                          onClick={() => setSharing({ ownerId: id, key: l.key })}
+                        >
+                          <Handshake className="h-[18px] w-[18px]" />
+                        </button>
+                        <button
+                          className="icon-btn -mr-2 text-maroon-600"
+                          aria-label={`Remove ${l.name}`}
+                          onClick={() => setLines(id, (ls) => ls.filter((x) => x.key !== l.key))}
+                        >
+                          <Trash2 className="h-[18px] w-[18px]" />
+                        </button>
+                      </div>
+                      {shared && (
+                        <button
+                          onClick={() => setSharing({ ownerId: id, key: l.key })}
+                          className="mt-1.5 flex w-full items-center gap-2 rounded-lg bg-terracotta-100/60 px-2.5 py-1.5 text-left text-xs text-terracotta-600"
+                        >
+                          <AvatarStack people={parts.map((p) => ({ id: p, name: userName(p) }))} max={4} />
+                          <span className="min-w-0 flex-1">
+                            Shared ÷{parts.length} · {userName(id)}’s part <strong className="tabular-nums">{formatINR(mine)}</strong>
+                          </span>
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+                {incoming.map((p) => (
+                  <li key={`${p.ownerId}-${p.line.key}`} className="flex items-center gap-2 bg-terracotta-100/40 px-4 py-2.5">
+                    <Handshake className="h-5 w-5 shrink-0 text-terracotta-500" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[15px] font-semibold">{l.name}</div>
-                      <div className="text-xs tabular-nums text-ink-500">
-                        {formatINR(l.unitPrice)} × {l.quantity} = <strong className="text-ink-700">{formatINR(lineTotal(l))}</strong>
+                      <div className="truncate text-[15px] font-semibold">{p.line.name}</div>
+                      <div className="text-xs text-ink-500">
+                        Shared ÷{p.participants.length} from {userName(p.ownerId)}’s order ({formatINR(lineTotal(p.line))})
                       </div>
                     </div>
-                    <QtyStepper
-                      value={l.quantity}
-                      min={1}
-                      onChange={(q) => setLines(id, (ls) => ls.map((x) => (x.key === l.key ? { ...x, quantity: q } : x)))}
-                    />
+                    <span className="text-sm font-bold tabular-nums text-ink-700">{formatINR(p.amount)}</span>
                     <button
-                      className="icon-btn -mr-2 text-maroon-600"
-                      aria-label={`Remove ${l.name}`}
-                      onClick={() => setLines(id, (ls) => ls.filter((x) => x.key !== l.key))}
+                      className="icon-btn -mr-2 text-ink-500"
+                      aria-label={`Edit sharing of ${p.line.name}`}
+                      onClick={() => setSharing({ ownerId: p.ownerId, key: p.line.key })}
                     >
-                      <Trash2 className="h-[18px] w-[18px]" />
+                      <Pencil className="h-4 w-4" />
                     </button>
                   </li>
                 ))}
@@ -499,7 +563,115 @@ function StepOrders({
           </section>
         );
       })}
+
+      {sharing && (
+        <SharePicker
+          draft={draft}
+          ownerId={sharing.ownerId}
+          lineKey={sharing.key}
+          onClose={() => setSharing(null)}
+          setSharedWith={(ids) =>
+            setLines(sharing.ownerId, (ls) => ls.map((x) => (x.key === sharing.key ? { ...x, sharedWith: ids } : x)))
+          }
+        />
+      )}
     </div>
+  );
+}
+
+/** Choose who shared a dish; cost is split equally to the paisa. */
+function SharePicker({
+  draft,
+  ownerId,
+  lineKey,
+  onClose,
+  setSharedWith,
+}: {
+  draft: LunchDraft;
+  ownerId: string;
+  lineKey: string;
+  onClose: () => void;
+  setSharedWith: (ids: string[]) => void;
+}) {
+  const { userName } = useLookups();
+  const line = (draft.orders[ownerId] ?? []).find((l) => l.key === lineKey);
+  if (!line) return null;
+  const selected = new Set((line.sharedWith ?? []).filter((id) => draft.attendees.includes(id)));
+  const others = draft.attendees.filter((id) => id !== ownerId);
+  const parts = lineParticipants(draft, ownerId, line);
+  const amounts = allocate(lineTotal(line), parts.map(() => 1));
+  const each = (uid: string) => amounts[parts.indexOf(uid)] ?? 0;
+
+  const toggle = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSharedWith([...next]);
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Share ${line.name}`}
+      footer={
+        <button className="btn btn-primary w-full" onClick={onClose}>
+          <Check className="h-5 w-5" />
+          {parts.length > 1 ? `Split ÷${parts.length} · ${formatINR(lineTotal(line))}` : 'Not shared · Done'}
+        </button>
+      }
+    >
+      <p className="mb-3 text-sm text-ink-700">
+        <strong>{userName(ownerId)}</strong> ordered {line.quantity > 1 ? `${line.quantity}× ` : ''}
+        {line.name} ({formatINR(lineTotal(line))}). Who shared it? The cost is split equally.
+      </p>
+
+      <div className="mb-3 flex gap-2">
+        <button className="btn btn-secondary btn-sm" onClick={() => setSharedWith(others)}>
+          <Users className="h-4 w-4" /> Everyone
+        </button>
+        {selected.size > 0 && (
+          <button className="btn btn-ghost btn-sm" onClick={() => setSharedWith([])}>
+            Not shared
+          </button>
+        )}
+      </div>
+
+      <div className="mb-2 flex items-center gap-2.5 rounded-xl border-2 border-terracotta-300 bg-terracotta-100/50 px-3 py-2.5">
+        <Avatar id={ownerId} name={userName(ownerId)} size="sm" />
+        <span className="flex-1 text-[15px] font-semibold">{userName(ownerId)} <span className="text-xs font-normal text-ink-500">(ordered it)</span></span>
+        <span className="font-bold tabular-nums">{formatINR(each(ownerId))}</span>
+      </div>
+      <div className="grid gap-2">
+        {others.map((id) => {
+          const on = selected.has(id);
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => toggle(id)}
+              aria-pressed={on}
+              className={cx(
+                'flex min-h-[52px] items-center gap-2.5 rounded-xl border-2 px-3 text-left transition',
+                on ? 'border-leaf-500 bg-leaf-50' : 'border-cream-200 bg-white',
+              )}
+            >
+              <span
+                className={cx(
+                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2',
+                  on ? 'border-leaf-500 bg-leaf-500 text-white' : 'border-cream-300',
+                )}
+              >
+                {on && <Check className="h-4 w-4" strokeWidth={3} />}
+              </span>
+              <Avatar id={id} name={userName(id)} size="sm" />
+              <span className="flex-1 text-[15px] font-semibold">{userName(id)}</span>
+              {on && <span className="font-bold tabular-nums text-leaf-700">{formatINR(each(id))}</span>}
+            </button>
+          );
+        })}
+      </div>
+    </Modal>
   );
 }
 
@@ -528,19 +700,21 @@ function ItemPicker({
   const shown = available.filter(
     (m) => (cat === 'All' || m.category === cat) && m.name.toLowerCase().includes(q.trim().toLowerCase()),
   );
-  const qtyOf = (id: string) => lines.find((l) => l.menuItemId === id)?.quantity ?? 0;
+  // The picker only touches this person's own (unshared) lines; shared dishes are managed with 🤝.
+  const solo = (l: DraftLine) => !l.sharedWith?.length;
+  const qtyOf = (id: string) => lines.find((l) => l.menuItemId === id && solo(l))?.quantity ?? 0;
   const total = lines.reduce((a, l) => a + lineTotal(l), 0);
   const count = lines.reduce((a, l) => a + l.quantity, 0);
 
   const add = (m: MenuItem) =>
     setLines((ls) => {
-      const existing = ls.find((l) => l.menuItemId === m.id);
+      const existing = ls.find((l) => l.menuItemId === m.id && solo(l));
       if (existing) return ls.map((l) => (l === existing ? { ...l, quantity: l.quantity + 1 } : l));
       return [...ls, { key: uid('ln'), menuItemId: m.id, name: m.name, unitPrice: m.price, quantity: 1 }];
     });
   const remove = (m: MenuItem) =>
     setLines((ls) =>
-      ls.flatMap((l) => (l.menuItemId !== m.id ? [l] : l.quantity > 1 ? [{ ...l, quantity: l.quantity - 1 }] : [])),
+      ls.flatMap((l) => (l.menuItemId !== m.id || !solo(l) ? [l] : l.quantity > 1 ? [{ ...l, quantity: l.quantity - 1 }] : [])),
     );
 
   const addCustom = (e: React.FormEvent) => {
@@ -791,6 +965,7 @@ function StepSummary({ draft, split, actualBill }: { draft: LunchDraft; split: R
   const { userName } = useLookups();
   const payer = draft.paidByUserId;
   const payerRow = split.rows.find((r) => r.userId === payer);
+  const portions = draftPortions(draft);
   const paidAmount = actualBill ?? split.total;
   const others = split.rows.filter((r) => r.userId !== payer);
   const diff = actualBill == null ? 0 : actualBill - split.total;
@@ -849,7 +1024,10 @@ function StepSummary({ draft, split, actualBill }: { draft: LunchDraft; split: R
                     {r.userId === payer && <Badge tone="paid">Paid</Badge>}
                   </div>
                   <div className="mt-0.5 text-xs leading-snug text-ink-500">
-                    {(draft.orders[r.userId] ?? []).map((l) => `${l.name}${l.quantity > 1 ? ` ×${l.quantity}` : ''}`).join(', ') || 'No dishes'}
+                    {portions
+                      .filter((p) => p.userId === r.userId)
+                      .map((p) => `${p.line.name}${p.line.quantity > 1 ? ` ×${p.line.quantity}` : ''}${p.participants.length > 1 ? ` (÷${p.participants.length})` : ''}`)
+                      .join(', ') || 'No dishes'}
                   </div>
                 </td>
                 <td className="px-2 py-2.5 text-right tabular-nums text-ink-700">{formatINR(r.foodTotal)}</td>
