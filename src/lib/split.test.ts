@@ -125,15 +125,15 @@ describe('demo data & balances', () => {
   const data: AppData = createDemoData();
   it('has 11 people, 13 menu items, 3 demo lunches', () => {
     expect(data.users).toHaveLength(11);
-    expect(data.menuItems).toHaveLength(32);
+    expect(data.menuItems).toHaveLength(33);
     expect(data.lunches).toHaveLength(3);
     expect(data.lunches.every((l) => l.isDemo)).toBe(true);
   });
   it('adds new menu items to existing v1 data once, without duplicates', () => {
     const old: AppData = { ...data, menuSeedVersion: undefined, menuItems: data.menuItems.slice(0, 13) };
     const migrated = migrateMenu(old)!;
-    expect(migrated.menuItems).toHaveLength(32);
-    expect(new Set(migrated.menuItems.map((m) => m.name)).size).toBe(32);
+    expect(migrated.menuItems).toHaveLength(33);
+    expect(new Set(migrated.menuItems.map((m) => m.name)).size).toBe(33);
     expect(migrateMenu(migrated)).toBeNull();
   });
   it('every lunch: shares sum to total', () => {
@@ -209,5 +209,21 @@ describe('shared dishes', () => {
     const owed = Object.fromEntries(b.settlements.map((s) => [s.userId, s.foodTotal]));
     expect(owed.j).toBe(8000 + 18000);
     expect(owed.s).toBe(8000 + 4000);
+  });
+});
+
+describe('menu updates never resurrect deleted dishes', () => {
+  it('v4 -> v5 adds only Water Bottle, even if older dishes were deleted', () => {
+    const d = createDemoData();
+    const v4: AppData = {
+      ...d,
+      menuSeedVersion: 4,
+      menuItems: d.menuItems.filter((m) => !['Chicken Meals', 'Mutton Meals', 'Fish Meals', 'Water Bottle'].includes(m.name)),
+    };
+    const m = migrateMenu(v4)!;
+    const added = m.menuItems.filter((x) => !v4.menuItems.some((y) => y.id === x.id)).map((x) => x.name);
+    expect(added).toEqual(['Water Bottle']);
+    expect(m.menuItems.find((x) => x.name === 'Water Bottle')).toMatchObject({ price: 1000, category: 'Drinks' });
+    expect(m.menuSeedVersion).toBe(5);
   });
 });

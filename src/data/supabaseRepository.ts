@@ -184,12 +184,22 @@ export class SupabaseRepository implements DataRepository {
       .channel('app_records_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, refresh)
       .subscribe();
+    // Phones suspend background tabs and silently drop the live connection, so also
+    // re-check when the app comes back (tab switch, home-screen app resume, bfcache
+    // restore, regaining network) and poll gently while it's on screen.
     const onVisible = () => document.visibilityState === 'visible' && refresh();
+    const onPageShow = () => refresh();
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('focus', refresh);
     window.addEventListener('online', refresh);
+    const poll = window.setInterval(() => document.visibilityState === 'visible' && refresh(), 60_000);
     return () => {
       window.clearTimeout(timer);
+      window.clearInterval(poll);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('focus', refresh);
       window.removeEventListener('online', refresh);
       this.client.removeChannel(channel);
     };

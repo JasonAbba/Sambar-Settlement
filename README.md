@@ -54,14 +54,14 @@ Made with ❤️ by Jason, because he was frustrated of splitting the bill.
 - Add to Home Screen support.
 
 ### Demo data
-- 3 sample lunches, labelled **Demo**.
-- **Remove demo lunches** on the dashboard clears them for everyone.
-- **Reset demo data** replaces **all** data with the starting demo set.
+- New, empty installs start with 3 sample lunches labelled **Demo**; **Remove demo lunches** on the dashboard clears them for everyone.
+- The shared group data has had its demo lunches removed; every lunch there is real.
+- There is deliberately no "reset everything" button, since one tap would wipe the whole group's lunches.
 
 ## Shared data (Supabase)
 
 All lunches, people and dishes are stored in one Supabase table, `app_records`, so everyone sees the same data.
-- Changes show up live on every phone.
+- Changes show up live on every phone. The app also re-checks when you switch back to it, and every minute while it's open, because phones drop the live connection in the background.
 - A copy is kept on each phone, so the app still opens without internet. A lunch saved while offline isn't uploaded automatically when the signal returns; save it again once online.
 - A lunch that's still being entered stays on the phone entering it until it's saved.
 
@@ -111,7 +111,7 @@ src/
   data/supabaseRepository.ts  shared cloud storage (changed rows only, live updates, offline copy)
   data/config.ts              which storage to use (Supabase URL + publishable key)
   data/store.tsx              app state & actions
-  data/seed.ts                demo people, placeholder menu, sample lunches, menu updates
+  data/seed.ts                demo people, placeholder menu, sample lunches, menu updates (each update adds only its new dishes)
   components/                 layout, pop-ups, toasts, dish illustrations, insights, badges, share
   pages/                      Dashboard, SplitLunch, Menu, People, History, LunchDetail
 supabase-schema.sql           table + access policies + live updates

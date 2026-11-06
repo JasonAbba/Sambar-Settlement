@@ -55,15 +55,28 @@ const MENU: [name: string, category: string, rupees: number, art: string][] = [
   ['Goli Soda', 'Drinks', 25, 'drink'],
   // Added in menu v4
   ['Butter Chicken', 'Chicken', 120, 'mutton'],
+  // Added in menu v5
+  ['Water Bottle', 'Drinks', 10, 'drink'],
 ];
 
+/** Menu version in which each dish (by name) first appeared; dishes not listed are v1. */
+const INTRODUCED_IN: Record<string, number> = {
+  'Veg Meals': 2, 'Paneer Biryani': 2, 'Ghee Rice': 2, 'Khuska Rice': 2, 'White Rice': 2,
+  'Grill Chicken': 2, 'Chicken Chettinad': 2, 'Boneless Chicken Tawa Fry': 2, 'Chicken Kebab (Half)': 2,
+  'Mutton Chops': 2, 'Mutton Nalli': 2, 'Boiled Egg': 2, 'Chapati': 2, 'Diet Coke': 2, 'Coke Zero': 2,
+  'Sprite Zero': 2, 'Goli Soda': 2,
+  'Chicken Kebab (Full)': 3,
+  'Butter Chicken': 4,
+  'Water Bottle': 5,
+};
+
 /** Bump when seed menu items are added, so existing browsers receive them once. */
-export const MENU_SEED_VERSION = 4;
+export const MENU_SEED_VERSION = 5;
 
 /**
- * Adds seed menu items that an existing dataset doesn't have yet (matched by
- * id or name). Runs once per MENU_SEED_VERSION, so dishes a user deliberately
- * deleted afterwards are not resurrected.
+ * Adds only the dishes introduced after the dataset's menu version (matched
+ * by id or name), once. Dishes the group deliberately deleted are never
+ * brought back by a later update.
  */
 export function migrateMenu(data: AppData): AppData | null {
   const from = data.menuSeedVersion ?? 1;
@@ -75,7 +88,9 @@ export function migrateMenu(data: AppData): AppData | null {
   }
   const haveIds = new Set(items.map((m) => m.id));
   const haveNames = new Set(items.map((m) => m.name.toLowerCase()));
-  const missing = seedMenu().filter((m) => !haveIds.has(m.id) && !haveNames.has(m.name.toLowerCase()));
+  const missing = seedMenu().filter(
+    (m) => (INTRODUCED_IN[m.name] ?? 1) > from && !haveIds.has(m.id) && !haveNames.has(m.name.toLowerCase()),
+  );
   return { ...data, menuItems: [...items, ...missing], menuSeedVersion: MENU_SEED_VERSION };
 }
 

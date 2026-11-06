@@ -9,7 +9,6 @@ import {
   IndianRupee,
   Info,
   PlusCircle,
-  RotateCcw,
   Trash2,
   TrendingUp,
   Users,
@@ -163,12 +162,12 @@ export default function Dashboard() {
                 included so you can explore. Remove them when you start recording real lunches.
               </>
             ) : (
-              <>Demo data is cleared. You can restore it anytime.</>
+              <>Every lunch here is real. Saved lunches can be edited or deleted from History.</>
             )}
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {demoCount > 0 && (
+        {demoCount > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               className="btn btn-secondary btn-sm"
               onClick={async () => {
@@ -187,26 +186,8 @@ export default function Dashboard() {
             >
               <Trash2 className="h-4 w-4" /> Remove demo lunches
             </button>
-          )}
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={async () => {
-              if (
-                await confirm({
-                  title: 'Reset all data to demo?',
-                  message: 'This replaces ALL people, menu items and lunches with the original demo data. This cannot be undone.',
-                  confirmLabel: 'Reset everything',
-                  danger: true,
-                })
-              ) {
-                store.resetDemo();
-                toast.success('Demo data restored.');
-              }
-            }}
-          >
-            <RotateCcw className="h-4 w-4" /> Reset demo data
-          </button>
-        </div>
+          </div>
+        )}
       </section>
     </div>
   );
